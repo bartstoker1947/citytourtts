@@ -13,28 +13,32 @@ app.get("/tts", async (req, res) => {
   console.log("Ontvangen tekst:", text);
 
   try {
-    const response = await fetch("https://api.elevenlabs.io/v1/text-to-speech/eleven_multilingual_v2/stream", {
-      method: "POST",
-      headers: {
-        "xi-api-key": API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.4, similarity_boost: 0.9 },
-      }),
-    });
+    const response = await fetch(
+      "https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB/stream",
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: { stability: 0.4, similarity_boost: 0.9 },
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("API-fout:", errorText);
-      return res.status(500).send("Fout bij ophalen audio van ElevenLabs: " + errorText);
+      return res
+        .status(500)
+        .send("Fout bij ophalen audio van ElevenLabs: " + errorText);
     }
 
     res.set("Content-Type", "audio/mpeg");
     response.body.pipe(res);
-
   } catch (error) {
     console.error("Serverfout:", error);
     res.status(500).send("Serverfout bij ophalen audio van ElevenLabs.");
