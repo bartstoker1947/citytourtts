@@ -1,27 +1,19 @@
 import express from "express";
 import fetch from "node-fetch";
+import cors from "cors";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(cors());
 
-// 🔑 Jouw echte ElevenLabs API-key
-//const API_KEY = "sk_f25ed488961828aa07748dd10eaab87bdbf99cc360e1573b";
+const PORT = process.env.PORT || 10000;
 const API_KEY = process.env.API_KEY;
 
-
-// 🗣️ Stem-ID (kan later per taal worden aangepast)
-const VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Clyde (Engels), werkt voor test
-
-// Statische bestanden (voor test of lokaal gebruik)
-app.use(express.static("."));
-
-// 🎧 Route voor tekst-naar-spraak
 app.get("/tts", async (req, res) => {
-  const text = req.query.text || "Welkom bij CityTour Amsterdam!";
+  const text = req.query.text || "Hallo Bart!";
   console.log("Ontvangen tekst:", text);
 
   try {
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+    const response = await fetch("https://api.elevenlabs.io/v1/text-to-speech/eleven_multilingual_v2/stream", {
       method: "POST",
       headers: {
         "xi-api-key": API_KEY,
@@ -29,29 +21,26 @@ app.get("/tts", async (req, res) => {
       },
       body: JSON.stringify({
         text,
-        model_id: "eleven_multilingual_v2", // ondersteunt NL, DE, FR, IT
+        model_id: "eleven_multilingual_v2",
         voice_settings: { stability: 0.4, similarity_boost: 0.9 },
       }),
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      console.error("Fout van ElevenLabs:", errText);
-      return res.status(500).send("Fout bij ophalen audio van ElevenLabs.");
+      const errorText = await response.text();
+      console.error("API-fout:", errorText);
+      return res.status(500).send("Fout bij ophalen audio van ElevenLabs: " + errorText);
     }
 
-    // Zet de audio terug naar de browser
-    const buffer = Buffer.from(await response.arrayBuffer());
     res.set("Content-Type", "audio/mpeg");
-    res.send(buffer);
+    response.body.pipe(res);
 
   } catch (error) {
     console.error("Serverfout:", error);
-    res.status(500).send("Interne serverfout.");
+    res.status(500).send("Serverfout bij ophalen audio van ElevenLabs.");
   }
 });
-app.get("/", (req, res) => {
-  res.send("✅ Server actief op Render — gebruik /tts?text=Hallo om te testen!");
-});
 
-app.listen(PORT, () => console.log(`✅ Server draait op poort ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ Server draait op poort ${PORT}`);
+});
