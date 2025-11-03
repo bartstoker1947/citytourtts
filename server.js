@@ -5,7 +5,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 🔑 Jouw echte ElevenLabs API-key
-const API_KEY = "sk_f25ed488961828aa07748dd10eaab87bdbf99cc360e1573b";
+//const API_KEY = "sk_f25ed488961828aa07748dd10eaab87bdbf99cc360e1573b";
+const API_KEY = process.env.API_KEY;
+
 
 // 🗣️ Stem-ID (kan later per taal worden aangepast)
 const VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Clyde (Engels), werkt voor test
