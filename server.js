@@ -48,5 +48,8 @@ app.get("/tts", async (req, res) => {
     res.status(500).send("Interne serverfout.");
   }
 });
+app.get("/", (req, res) => {
+  res.send("✅ Server actief op Render — gebruik /tts?text=Hallo om te testen!");
+});
 
 app.listen(PORT, () => console.log(`✅ Server draait op poort ${PORT}`));
