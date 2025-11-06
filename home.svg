@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="80" viewBox="0 0 60 80">
+  <!-- De “staaf” naar de grond -->
+  <rect x="28" y="30" width="4" height="40" fill="#00f" opacity="0.6"/>
+  <!-- De bol bovenaan -->
+  <circle cx="30" cy="20" r="12" fill="#00f" stroke="#fff" stroke-width="3"/>
+  <!-- Glow effect -->
+  <circle cx="30" cy="20" r="18" fill="none" stroke="#00f" stroke-width="2" opacity="0.4"/>
+</svg>

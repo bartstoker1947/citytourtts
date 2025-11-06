@@ -1,0 +1,4 @@
+
+2025-10-20 14:16:00 - Upload gestart
+Uploadmap aangemaakt: C:\xampp\htdocs\WAP/wp-content/uploads/icon_images/
+Afbeelding opgeslagen: http://localhost/wp-content/uploads/icon_images/steef_20251020_141600.png

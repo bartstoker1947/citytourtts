@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>Billboard SVG Maker</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      padding: 30px; 
+      background: #eef2f5; 
+      font-size: 20px; /* grote basistekst */
+    }
+    h2 { font-size: 28px; margin-bottom: 20px; }
+    label { display:block; margin-top:20px; font-size:22px; }
+    input[type="text"], input[type="file"] {
+      font-size: 20px;
+      padding: 8px;
+      margin-top: 5px;
+      width: 100%;
+      max-width: 400px;
+    }
+    button { 
+      margin-top:25px; 
+      padding:12px 24px; 
+      font-size: 22px; 
+      background:#0078D7; 
+      color:white; 
+      border:none; 
+      border-radius:6px; 
+      cursor:pointer;
+    }
+    button:hover { background:#005fa3; }
+
+    /* Preview container */
+    #preview {
+      margin-top: 30px;
+      border: 2px solid #333;
+      padding: 20px;
+      min-height: 500px;   /* veel ruimte */
+      background: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #preview svg {
+      width: 100%;
+      max-width: 600px; /* groot billboard */
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <h2>📍 Billboard SVG Maker</h2>
+
+  <label>
+    Tekst voor het bord:
+    <input type="text" id="titleInput" value="Kapper">
+  </label>
+
+  <label>
+    Logo toevoegen (PNG/JPG):
+    <input type="file" id="logoInput" accept="image/*">
+  </label>
+
+  <button onclick="generate()">✨ Genereer & Download</button>
+
+  <div id="preview">👉 Hier verschijnt je billboard...</div>
+
+  <script>
+    function makeBillboardSVGtext(title = "Jouw tekst", logoDataUrl = null) {
+      return `
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="180" viewBox="0 0 160 180">
+  <line x1="80" y1="180" x2="80" y2="110" stroke="#333" stroke-width="4"/>
+  <rect x="15" y="15" width="130" height="70" rx="12" ry="12"
+        fill="#fff" stroke="#333" stroke-width="3"/>
+  ${logoDataUrl 
+    ? `<image x="20" y="25" width="60" height="60" href="${logoDataUrl}"/>
+       <text x="100" y="60" font-size="26" font-family="Arial, sans-serif"
+             font-weight="bold" text-anchor="middle" dominant-baseline="middle" fill="#111">${title}</text>`
+    : `<text x="80" y="55" font-size="28" font-family="Arial, sans-serif"
+             font-weight="bold" text-anchor="middle" dominant-baseline="middle" fill="#111">${title}</text>`
+  }
+</svg>
+      `.trim();
+    }
+
+    function downloadSVG(filename, svgCode) {
+      const blob = new Blob([svgCode], {type: "image/svg+xml"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function generate() {
+      const title = document.getElementById("titleInput").value || "Naamloos";
+      const fileInput = document.getElementById("logoInput");
+
+      if (fileInput.files.length > 0) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const svgCode = makeBillboardSVGtext(title, e.target.result);
+          showAndDownload(title, svgCode);
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        const svgCode = makeBillboardSVGtext(title, null);
+        showAndDownload(title, svgCode);
+      }
+    }
+
+    function showAndDownload(title, svgCode) {
+      document.getElementById("preview").innerHTML = svgCode;
+      downloadSVG("billboard-" + title + ".svg", svgCode);
+    }
+  </script>
+</body>
+</html>

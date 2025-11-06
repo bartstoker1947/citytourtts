@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WAP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+
+    /* Verberg alle Google debug overlays */
+.gm-style .gmnoprint,
+.gm-style .gm-style-cc,
+.gm-style .gm-bundled-control {
+  display: none !important;
+}
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Topbar */
+    #topbar {
+      background: #222;
+      color: #fff;
+      padding: 5px;
+      flex: 0 0 auto;
+    }
+    #topbar button { margin-right: 6px; }
+
+    /* Split container: map/pano boven/onder */
+    #split {
+      display: flex;
+      flex-direction: column;          /* boven/onder */
+      height: calc(100% - 25px);       /* ruimte voor topbar */
+      flex: 1 1 auto;
+    }
+    /* Als je Reverse klikt, wisselen ze zonder Split te herinitialiseren */
+    #split.reverse { flex-direction: column-reverse; }
+
+    /* Panelen – laat Split.js de hoogte regelen (géén height:100%) */
+    #map, #pano  {
+      width: 100%;
+      min-height: 80px;                /* voorkomt 0px paneel */
+      overflow: hidden;
+      cursor: default !important;      /* weg met ‘vaag bolletje’ */
+    }
+    #map:active, #pano:active { cursor: grabbing !important; }
+
+    /* Zorg dat alle children van #map en #pano de default cursor krijgen */
+#map, #map * {
+  cursor: default !important;
+}
+#pano, #pano * {
+  cursor: default !important;
+}
+
+/* Alleen bij slepen: grabbing */
+#map:active, #map:active * {
+  cursor: grabbing !important;
+}
+#pano:active, #pano:active * {
+  cursor: grabbing !important;
+}
+
+
+    /* Dikke gutter met duidelijke ‘grip’ */
+    .gutter {
+      background: #444;
+      background-image:
+        linear-gradient(#666 0 0),
+        linear-gradient(#666 0 0),
+        linear-gradient(#666 0 0);
+      background-repeat: no-repeat;
+      background-position: 50% 35%, 50% 50%, 50% 65%;
+      background-size: 40px 2px, 40px 2px, 40px 2px; /* drie lijntjes */
+      user-select: none;
+      touch-action: none;
+    }
+    .gutter.gutter-vertical {
+      cursor: row-resize;
+      height: 24px;                    /* 👈 lekker dik */
+      flex: 0 0 auto;
+    }
+
+    /* Debugbar onderin */
+    #debugBar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(0,0,0,0.7);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 2px 6px;
+      z-index: 9999;
+    }
+  </style>
+
+  <!-- Split.js -->
+  <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
+<h2>IPv4 volgens de server</h2>
+<pre id="serverIp">Ophalen...</pre>
+  <!-- Jouw app -->
+<script>
+fetch('getinfo.php')
+  .then(r => r.json())
+  .then(d => {
+    document.getElementById('serverIp').textContent =
+      d.ip_v4 ? d.ip_v4 : 'Geen IPv4 gedetecteerd (alleen IPv6?).';
+  })
+  .catch(err => {
+    document.getElementById('serverIp').textContent = 'Fout: ' + err;
+  });
+
+/* Optioneel: publieke IPv4 direct van internetdienst (handig als je server alleen IPv6 ziet)*/
+fetch('https://api4.ipify.org?format=json')
+  .then(r => r.json())
+  .then(d => console.log('Publieke IPv4 (ipify):', d.ip));
+
+</script>
+
+  
+  <script src="main.js" ></script>
+  
+
+    <!--script src="make_svg.js" ></script-->
+</head>
+<body>
+  <!-- Topbar -->
+  <div id="topbar">
+    <button onclick="setSplit50()">50/50</button>
+    <button onclick="setMapOnly()">Map</button>
+    <button onclick="setPanoOnly()">Pano</button>
+    <button onclick="toggleReverse()">Reverse</button>
+    <button onclick="toggleFullscreen()">Fullscreen</button>
+    <div id="result">Ophalen...</div>
+  </div>
+
+  <!-- Split container -->
+  <div id="split">
+    <div id="map"></div>
+    <div id="pano"></div>
+  </div>
+
+  <!-- Debugbar -->
+  <div id="debugBar">
+    time: <span id="deTijd">-</span> |
+    heading: <span id="dbgHeading">-</span> |
+    tilt: <span id="dbgTilt">-</span> |
+    lat: <span id="dbgLat">-</span> |
+    lng: <span id="dbgLng">-</span>
+  </div>
+
+  
+
+  <script>
+    // ÉÉN Split-instance, overal hergebruiken
+    let split = null;
+
+    function initSplit() {
+      if (split) return; // al gedaan
+      split = Split(['#map', '#pano'], {
+        direction: 'vertical',
+        sizes: [50, 50],
+        minSize: 80,
+        gutterSize: 24,           // 👈 groter
+        cursor: 'row-resize'
+      });
+    }
+
+    // Knoppen gebruiken setSizes op dezelfde instance
+    function setSplit50()   { split.setSizes([50, 50]); }
+    function setMapOnly()   { split.setSizes([100, 0]); }
+    function setPanoOnly()  { split.setSizes([0, 100]); }
+
+    function toggleReverse() {
+      document.getElementById('split').classList.toggle('reverse');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+
+    // Start Split zodra DOM er is (Maps zelf start via callback=initMap)
+    document.addEventListener('DOMContentLoaded', initSplit);
+  </script>
+
+
+
+<!--script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDyUakxUwxTeInYQ__bd_XUPYNl9gH0PLk" async defer></script-->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDyUakxUwxTeInYQ__bd_XUPYNl9gH0PLk&libraries=maps,marker"   async defer> </script>
+
+<!--script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDyUakxUwxTeInYQ__bd_XUPYNl9gH0PLk&callback=onGoogleReady" async defer></script-->
+
+   <!--script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDyUakxUwxTeInYQ__bd_XUPYNl9gH0PLk&callback=initMap" async defer></script-->
+</body>
+</html>
+
+   
+   
+   
+   
+

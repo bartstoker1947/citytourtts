@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>11Labs TTS Demo</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 40px; }
+    button { margin: 8px; padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h2>🎧 ElevenLabs TTS Demo</h2>
+  <p>Klik op een knop om de tekst te horen:</p>
+  <button onclick="speak('Welkom bij CityTour Amsterdam!')">🇳🇱 Nederlands</button>
+  <button onclick="speak('Willkommen bei CityTour Amsterdam!')">🇩🇪 Duits</button>
+  <button onclick="speak('Bienvenue à CityTour Amsterdam!')">🇫🇷 Frans</button>
+  <button onclick="speak('Benvenuti a CityTour Amsterdam!')">🇮🇹 Italiaans</button>
+  <button onclick="speak('Welcome at CityTour Amsterdam!')">at Engels</button>
+
+  <audio id="player" controls style="margin-top:20px; width:80%;"></audio>
+
+  <script>
+    async function speak(text) {
+      //const response = await fetch(`/tts?text=${encodeURIComponent(text)}`);
+       const response = await fetch(`http://localhost:3000/tts?text=${encodeURIComponent(text)}`);
+    
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const player = document.getElementById("player");
+      player.src = url;
+      player.play();
+    }
+  </script>
+</body>
+</html>

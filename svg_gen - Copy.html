@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Marker met Foto → PNG & SVG (Google Maps)</title>
+<style>
+  :root{--bg:#0f1115;--fg:#e9eef4;--muted:#9aa8b7;--card:#171a21;--accent:#4da3ff}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0d0f14,#0a0c10);color:var(--fg);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .app{display:grid;grid-template-columns:320px 1fr;gap:16px;min-height:100vh;padding:16px}
+  .panel{background:var(--card);border:1px solid #232a36;border-radius:14px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  h1{margin:0 0 8px;font-size:18px}
+  label{display:block;margin:10px 0 6px;font-weight:600}
+  input[type="file"],select,input[type="range"],input[type="color"]{width:100%}
+  input[type="file"],select{padding:10px;border-radius:10px;border:1px solid #2a3240;background:#11151b;color:var(--fg)}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+  .btn{appearance:none;border:0;border-radius:12px;padding:10px 12px;font-weight:700;color:#00142d;background:var(--accent);cursor:pointer}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .muted{color:var(--muted);font-size:12px}
+  .preview{display:grid;grid-template-rows:auto 1fr;gap:10px}
+  .stage{display:grid;place-items:center;background:#0b0f15;border-radius:12px;border:1px solid #1b2230;min-height:380px}
+  canvas{background:transparent}
+  .tips{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{border:1px solid #253244;background:#0e141c;color:#b8c6d8;border-radius:999px;padding:6px 10px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <h1>Marker (vector lijf + ingesloten foto)</h1>
+    <p class="muted">Laad een foto, kadreren met slepen/zoomen. Exporteer als <strong>PNG</strong> of <strong>SVG</strong>. De SVG bevat een <code>&lt;image&gt;</code> met clipPath en een vectorlichaam.</p>
+
+    <label>Foto (png/jpg)</label>
+    <input id="file" type="file" accept="image/*"/>
+
+    <div class="row">
+      <div>
+        <label>Totale hoogte (px)</label>
+        <select id="size">
+          <option value="48">48</option>
+          <option value="56" selected>56 (standaard)</option>
+          <option value="64">64</option>
+          <option value="72">72</option>
+        </select>
+      </div>
+      <div>
+        <label>Ringkleur hoofd</label>
+        <input id="ringColor" type="color" value="#0b3d2e"/>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Lichaamstype</label>
+        <select id="bodyType">
+          <option value="m" selected>Man</option>
+          <option value="v">Vrouw</option>
+          <option value="stick">Stick</option>
+        </select>
+      </div>
+      <div>
+        <label>Kleur lijf</label>
+        <input id="bodyColor" type="color" value="#0b3d2e"/>
+      </div>
+    </div>
+
+    <label>Foto zoom</label>
+    <input id="zoom" type="range" min="0.5" max="3" step="0.01" value="1"/>
+
+    <div class="row" style="margin-top:10px">
+      <button id="btnPng" class="btn" disabled>Download PNG</button>
+      <button id="btnSvg" class="btn" disabled>Download SVG</button>
+      <button id="btnCopy" class="btn" disabled>Kopieer DataURL</button>
+    </div>
+
+    <div class="tips" style="margin-top:10px">
+      <span class="pill">Sleep: foto verplaatsen</span>
+      <span class="pill">Scroll: zoom</span>
+      <span class="pill">Dubbelklik: reset</span>
+    </div>
+  </aside>
+
+  <main class="panel preview">
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <div class="muted">Voorbeeld (Maps-marker verhouding)</div>
+      <div class="muted">Anker = onderpunt</div>
+    </div>
+    <div class="stage">
+      <canvas id="c" width="200" height="260" aria-label="voorbeeld"></canvas>
+    </div>
+    <div class="muted">Gebruik in Maps: <code>new google.maps.Marker({icon:{url:dataUrl, anchor:new google.maps.Point(ax, ay)}})</code></div>
+  </main>
+</div>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+const file = $('file');
+const sizeSel = $('size');
+const ringInput = $('ringColor');
+const bodyType = $('bodyType');
+const bodyColor = $('bodyColor');
+const zoomInp = $('zoom');
+const btnPng = $('btnPng');
+const btnSvg = $('btnSvg');
+const btnCopy = $('btnCopy');
+const canvas = $('c');
+const ctx = canvas.getContext('2d');
+
+let img = null; // geladen foto als HTMLImageElement (dataURL)
+const face = { x:0, y:0, scale:1, dragging:false, lastX:0, lastY:0 };
+
+function loadImage(file){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=r.result;}; r.onerror=rej; r.readAsDataURL(file);});
+}
+
+file.addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return; img = await loadImage(f); face.scale=1; face.x=0; face.y=0; draw(); btnPng.disabled=false; btnSvg.disabled=false; btnCopy.disabled=false;
+});
+
+sizeSel.addEventListener('change', draw);
+ringInput.addEventListener('input', draw);
+bodyType.addEventListener('change', draw);
+bodyColor.addEventListener('input', draw);
+zoomInp.addEventListener('input', ()=>{ face.scale=parseFloat(zoomInp.value); draw();});
+
+canvas.addEventListener('mousedown', e=>{ face.dragging=true; face.lastX=e.offsetX; face.lastY=e.offsetY; });
+canvas.addEventListener('mouseup', ()=> face.dragging=false);
+canvas.addEventListener('mouseleave', ()=> face.dragging=false);
+canvas.addEventListener('mousemove', e=>{
+  if(!face.dragging) return; const dx=e.offsetX-face.lastX, dy=e.offsetY-face.lastY; face.x+=dx; face.y+=dy; face.lastX=e.offsetX; face.lastY=e.offsetY; draw();
+});
+canvas.addEventListener('wheel', e=>{ e.preventDefault(); const z=face.scale*Math.pow(1.001, -e.deltaY); face.scale=Math.min(3, Math.max(0.5,z)); zoomInp.value=face.scale; draw(); }, {passive:false});
+canvas.addEventListener('dblclick', ()=>{ face.scale=1; face.x=0; face.y=0; zoomInp.value=1; draw();});
+
+btnPng.addEventListener('click', ()=>{
+  const {dataUrl}=renderPNG();
+  const a=document.createElement('a'); a.href=dataUrl; a.download='marker.png'; a.click();
+});
+
+btnSvg.addEventListener('click', ()=>{
+  const {svgText}=renderSVG();
+  const blob = new Blob([svgText], {type:'image/svg+xml'});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='marker.svg'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+btnCopy.addEventListener('click', async ()=>{
+  const {dataUrl}=renderPNG();
+  try{ await navigator.clipboard.writeText(dataUrl); btnCopy.textContent='Gekopieerd!'; setTimeout(()=>btnCopy.textContent='Kopieer DataURL',1200);}catch(err){alert('Kopiëren geblokkeerd. Download het bestand.');}
+});
+
+function draw(){
+  const scale=3; // vergrote preview
+  const H = parseInt(sizeSel.value,10);
+  const W = Math.round(H*0.75); // klassieke pinverhouding
+  canvas.width = W*scale; canvas.height = H*scale + 40;
+  const cx = canvas.width/2;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const {anchorX,anchorY} = paintMarkerCanvas(ctx, cx, 20, H*scale, scale);
+  // Anker
+  ctx.fillStyle = '#9fb3ca';
+  ctx.fillRect(anchorX-1, anchorY-8, 2, 16);
+  ctx.fillRect(anchorX-8, anchorY-1, 16, 2);
+  ctx.fillStyle = '#8aa0ba';
+  ctx.fillText(`anchor (${Math.round(anchorX)}, ${Math.round(anchorY)})`, 8, canvas.height-8);
+}
+
+function paintMarkerCanvas(ctx, centerX, topY, H, s){
+  const ringColor = ringInput.value;
+  const figureColor = bodyColor.value;
+
+  // Geometrie
+  const headR = H*0.22;
+  const ringW = Math.max(2*s, H*0.02);
+  const headInnerR = headR - ringW;
+  const neckY = topY + headR*2 + H*0.02;
+  const bodyH = H*0.33;
+  const legH = H*0.24;
+  const pinR = H*0.06;
+  const w = headR*2.1;
+  const hipY = neckY + bodyH - H*0.05;
+  const footY = hipY + legH;
+  const spread = w*0.32;
+
+  // Schaduw
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.28)'; ctx.shadowBlur = 8*s; ctx.shadowOffsetY = 4*s;
+  // Benen/pin
+  ctx.beginPath();
+  ctx.moveTo(centerX, hipY);
+  ctx.lineTo(centerX - spread, footY);
+  ctx.arc(centerX - spread, footY, pinR, Math.PI, 0);
+  ctx.lineTo(centerX + spread, footY);
+  ctx.arc(centerX + spread, footY, pinR, 0, Math.PI);
+  ctx.closePath(); ctx.fillStyle = figureColor; ctx.fill();
+  // Lijf (capsule)
+  ctx.beginPath();
+  const bodyW = w*0.58; const bodyX = centerX - bodyW/2; const bodyTop = neckY - H*0.02; const bodyBottom = hipY; const r = Math.min(bodyW, (bodyBottom-bodyTop))*0.35;
+  roundRect(ctx, bodyX, bodyTop, bodyW, bodyBottom-bodyTop, r); ctx.fillStyle = figureColor; ctx.fill();
+  // Hoofd ring
+  const headCX = centerX; const headCY = topY + headR;
+  ctx.beginPath(); ctx.arc(headCX, headCY, headR, 0, Math.PI*2); ctx.fillStyle = ringColor; ctx.fill();
+  ctx.restore();
+  // Hoofd inhoud
+  ctx.save(); ctx.beginPath(); ctx.arc(headCX, headCY, headInnerR, 0, Math.PI*2); ctx.clip();
+  if(img){
+    const sZ = face.scale; const drawR = headInnerR; const iw = img.width, ih = img.height; const base = Math.max(iw, ih);
+    const k = (drawR*2)/base * 1.2; const dw = iw*k*sZ, dh = ih*k*sZ; const dx = headCX - dw/2 + face.x; const dy = headCY - dh/2 + face.y;
+    ctx.drawImage(img, dx, dy, dw, dh);
+  } else { const grad = ctx.createLinearGradient(headCX-headInnerR, headCY-headInnerR, headCX+headInnerR, headCY+headInnerR); grad.addColorStop(0,'#ccd7e5'); grad.addColorStop(1,'#aebad0'); ctx.fillStyle = grad; ctx.fillRect(headCX-headInnerR, headCY-headInnerR, headInnerR*2, headInnerR*2); }
+  ctx.restore();
+  // Glansrand
+  ctx.beginPath(); ctx.arc(headCX, headCY, headInnerR, 0, Math.PI*2); ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = Math.max(1, ringW*0.35); ctx.stroke();
+
+  const anchorX = centerX;
+  const anchorY = footY + pinR;
+  return {anchorX, anchorY};
+}
+
+function roundRect(ctx, x, y, w, h, r){ const rr = Math.min(r, w/2, h/2); ctx.moveTo(x+rr,y); ctx.arcTo(x+w, y, x+w, y+h, rr); ctx.arcTo(x+w, y+h, x, y+h, rr); ctx.arcTo(x, y+h, x, y, rr); ctx.arcTo(x, y, x+w, y, rr); }
+
+function renderPNG(){
+  const H = parseInt(sizeSel.value,10); const W = Math.round(H*0.75);
+  const tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H; const tctx = tmp.getContext('2d');
+  paintMarkerCanvas(tctx, W/2, 0, H, 1);
+  return { dataUrl: tmp.toDataURL('image/png'), width: W, height: H };
+}
+
+function renderSVG(){
+  const H = parseInt(sizeSel.value,10); const W = Math.round(H*0.75);
+  const ring = ringInput.value; const body = bodyColor.value;
+  // Zelfde geometrie als canvas
+  const headR = H*0.22; const ringW = Math.max(2, H*0.02); const headInnerR = headR - ringW;
+  const neckY = headR*2 + H*0.02; const bodyH = H*0.33; const legH = H*0.24; const pinR = H*0.06; const w = headR*2.1;
+  const hipY = neckY + bodyH - H*0.05; const footY = hipY + legH; const spread = w*0.32;
+  const cx = W/2; const headCX = cx; const headCY = headR;
+
+  // Foto als dataURL (al aanwezig in img.src), plaatsing zoals canvas
+  const hasImg = !!img; const imgHref = hasImg ? img.src : '';
+  // Schaling foto: we rekenen dezelfde k, maar animaties in SVG vermijden; we houden het bij translate/scale in image transform
+  let imgTransform = '';
+  if(hasImg){
+    const iw = img.width, ih = img.height; const base = Math.max(iw, ih);
+    const k = (headInnerR*2)/base * 1.2; const sZ = face.scale; const dw = iw*k*sZ; const dh = ih*k*sZ;
+    const dx = headCX - dw/2 + face.x; const dy = headCY - dh/2 + face.y;
+    imgTransform = `translate(${dx.toFixed(2)},${dy.toFixed(2)}) scale(${(dw/iw).toFixed(5)}, ${(dh/ih).toFixed(5)})`;
+  }
+
+  // Vector paths (lijf + benen/pin)
+  const bodyW = w*0.58; const bodyX = cx - bodyW/2; const bodyTop = neckY - H*0.02; const bodyBottom = hipY; const rr = Math.min(bodyW, (bodyBottom-bodyTop))*0.35;
+  const bodyPath = roundedRectPath(bodyX, bodyTop, bodyW, bodyBottom-bodyTop, rr);
+  const legsPath = `M ${cx} ${hipY} L ${cx-spread} ${footY} a ${pinR} ${pinR} 0 0 0 ${2*pinR} 0 L ${cx+spread} ${footY} a ${pinR} ${pinR} 0 0 0 ${-2*pinR} 0 Z`;
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>
+    <clipPath id="clipHead"><circle cx="${headCX}" cy="${headCY}" r="${headInnerR}"/></clipPath>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="${(H*0.07).toFixed(2)}" stdDeviation="${(H*0.06).toFixed(2)}" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <!-- Benen/pin -->
+    <path d="${legsPath}" fill="${body}"/>
+    <!-- Lijf -->
+    <path d="${bodyPath}" fill="${body}"/>
+    <!-- Hoofd ring -->
+    <circle cx="${headCX}" cy="${headCY}" r="${headR}" fill="${ring}"/>
+    <!-- Hoofd inhoud (foto of fallback) -->
+    ${hasImg ? `
+      <image href="${imgHref}" x="0" y="0" width="${img.width}" height="${img.height}" clip-path="url(#clipHead)" transform="${imgTransform}"/>
+    ` : `
+      <circle cx="${headCX}" cy="${headCY}" r="${headInnerR}" fill="url(#gradFallback)"/>
+      <defs>
+        <radialGradient id="gradFallback" cx="50%" cy="40%" r="70%">
+          <stop offset="0%" stop-color="#d7e0ee"/>
+          <stop offset="100%" stop-color="#aebad0"/>
+        </radialGradient>
+      </defs>
+    `}
+    <!-- Glansrand -->
+    <circle cx="${headCX}" cy="${headCY}" r="${headInnerR}" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="${Math.max(1, ringW*0.35).toFixed(2)}"/>
+  </g>
+  <!-- Anker (onderpunt) -->
+  <metadata>anchor-x="${cx.toFixed(2)}" anchor-y="${(footY+pinR).toFixed(2)}"</metadata>
+</svg>`;
+
+  return { svgText: svg };
+}
+
+function roundedRectPath(x,y,w,h,r){
+  const rr = Math.min(r, w/2, h/2);
+  return [
+    `M ${x+rr} ${y}`,
+    `H ${x+w-rr}`,
+    `A ${rr} ${rr} 0 0 1 ${x+w} ${y+rr}`,
+    `V ${y+h-rr}`,
+    `A ${rr} ${rr} 0 0 1 ${x+w-rr} ${y+h}`,
+    `H ${x+rr}`,
+    `A ${rr} ${rr} 0 0 1 ${x} ${y+h-rr}`,
+    `V ${y+rr}`,
+    `A ${rr} ${rr} 0 0 1 ${x+rr} ${y}`,
+    'Z'
+  ].join(' ');
+}
+
+// Eerste render
+function first(){ draw(); }
+first();
+</script>
+</body>
+</html>
