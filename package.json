@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "dependencies": {
     "cors": "^2.8.5",
@@ -5,3 +6,20 @@
     "node-fetch": "^3.3.2"
   }
 }
+=======
+{
+  "name": "citytour-tts",
+  "version": "1.0.0",
+  "description": "CityTour Amsterdam ElevenLabs TTS Server",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2",
+    "cors": "^2.8.5"
+  }
+}
+>>>>>>> b261dc742546eb8b1a99722bb6ff9c72270a8b84
