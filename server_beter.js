@@ -39,7 +39,7 @@ app.get("/tts", async (req, res) => {
       body: JSON.stringify({
         text,
         model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.4, similarity_boost: 0.9, speaking_rate: 0.50  },
+        voice_settings: { stability: 0.4, similarity_boost: 0.9 },
       }),
     });
 
