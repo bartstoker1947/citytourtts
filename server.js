@@ -65,8 +65,16 @@ app.post("/tts", async (req, res) => {
 // 🎧 NIEUW: /speak voor de wandelapp
 // ------------------------------
 app.post("/speak", async (req, res) => {
-  const text = req.body.text || "";
-  console.log("TTS ontvangen:", text);
+let text = req.body.text || "";
+console.log("TTS ontvangen (RAW):", text);
+
+// HTML verwijderen – verplicht voor ElevenLabs
+text = text
+  .replace(/<[^>]*>?/gm, "")    // alle HTML tags eruit
+  .replace(/&nbsp;/g, " ")      // NBSP fix
+  .trim();
+
+console.log("TTS schoongemaakt:", text);
 
   try {
     const response = await fetch(
@@ -110,3 +118,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("TTS server draait op poort", PORT);
 });
+
