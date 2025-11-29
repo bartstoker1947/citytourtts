@@ -45,8 +45,9 @@
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      document.getElementById("player").src = url;
-      document.getElementById("player").play();
+      const audio = document.getElementById("player");
+      audio.src = url;
+      audio.play();
     }
   </script>
 
