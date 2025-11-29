@@ -23,7 +23,7 @@ const API_KEY = process.env.ELEVENLABS_API_KEY;
 const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "EXAVITQu4vr4xnSDxMaL";
 
 // ------------------------------
-// ROOT → toon jouw testpagina
+// ROOT → 11labs testpagina
 // ------------------------------
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "11labs.html"));
@@ -43,6 +43,7 @@ app.post("/tts", async (req, res) => {
         headers: {
           "xi-api-key": API_KEY,
           "Content-Type": "application/json",
+          "Accept": "audio/mpeg"
         },
         body: JSON.stringify({
           text,
@@ -75,6 +76,7 @@ app.post("/speak", async (req, res) => {
         headers: {
           "xi-api-key": API_KEY,
           "Content-Type": "application/json",
+          "Accept": "audio/mpeg"
         },
         body: JSON.stringify({
           text,
