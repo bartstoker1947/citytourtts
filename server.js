@@ -78,7 +78,17 @@ app.get("/speak", async (req, res) => {
 // -------------------------------------------
 // Server starten
 // -------------------------------------------
+// -------------------------------------------
+// /speak → POST testendpoint
+// -------------------------------------------
+app.post("/speak", (req, res) => {
+  console.log("POST /speak ontvangen:", req.body);
+  res.send("POST /speak werkt!");
+});
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("TTS server (streaming) draait op poort", PORT);
 });
+
