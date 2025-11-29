@@ -1,35 +1,58 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <title>11Labs TTS Demo</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 40px; }
-    button { margin: 8px; padding: 10px 20px; font-size: 16px; }
-  </style>
+<meta charset="UTF-8">
+<title>ElevenLabs TTS Demo</title>
+<style>
+  body { font-family: Arial; text-align: center; padding: 40px; }
+  button {
+    margin: 10px;
+    padding: 15px 25px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+</style>
 </head>
 <body>
-  <h2>🎧 ElevenLabs TTS Demo</h2>
-  <p>Klik op een knop om de tekst te horen:</p>
-  <button onclick="speak('Welkom bij CityTour Amsterdam!')">🇳🇱 Nederlands</button>
-  <button onclick="speak('Willkommen bei CityTour Amsterdam!')">🇩🇪 Duits</button>
-  <button onclick="speak('Bienvenue à CityTour Amsterdam!')">🇫🇷 Frans</button>
-  <button onclick="speak('Benvenuti a CityTour Amsterdam!')">🇮🇹 Italiaans</button>
-  <button onclick="speak('Welcome at CityTour Amsterdam!')">at Engels</button>
 
-  <audio id="player" controls style="margin-top:20px; width:80%;"></audio>
+<h1>🎧 ElevenLabs TTS Demo</h1>
+<p>Klik op een knop om de tekst te horen:</p>
 
-  <script>
-    async function speak(text) {
-      //const response = await fetch(`/tts?text=${encodeURIComponent(text)}`);
-       const response = await fetch(`http://localhost:3000/tts?text=${encodeURIComponent(text)}`);
-    
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const player = document.getElementById("player");
-      player.src = url;
-      player.play();
+<button onclick="speak('nl')">🇳🇱 Nederlands</button>
+<button onclick="speak('de')">🇩🇪 Duits</button>
+<button onclick="speak('fr')">🇫🇷 Frans</button>
+<button onclick="speak('it')">🇮🇹 Italiaans</button>
+<button onclick="speak('en')">🇬🇧 Engels</button>
+
+<br><br>
+
+<audio id="player" controls style="width:80%;"></audio>
+
+<script>
+async function speak(lang) {
+    const texts = {
+        nl: "Hallo Bart, dit is een Nederlandse test.",
+        de: "Hallo Bart, dies ist ein deutscher Test.",
+        fr: "Bonjour Bart, ceci est un test français.",
+        it: "Ciao Bart, questo è un test italiano.",
+        en: "Hello Bart, this is an English test."
+    };
+
+    const response = await fetch("/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: texts[lang] })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+        document.getElementById("player").src = data.url;
+    } else {
+        alert("TTS fout: " + data.message);
     }
-  </script>
+}
+</script>
+
 </body>
 </html>
