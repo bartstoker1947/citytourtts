@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import fetch from "node-fetch";
 import path from "path";
 import { fileURLToPath } from "url";
-
+ 
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -131,5 +131,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("TTS server (streaming) draait op poort", PORT);
 });
+
 
 
