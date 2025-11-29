@@ -81,14 +81,55 @@ app.get("/speak", async (req, res) => {
 // -------------------------------------------
 // /speak → POST testendpoint
 // -------------------------------------------
-app.post("/speak", (req, res) => {
-  console.log("POST /speak ontvangen:", req.body);
-  res.send("POST /speak werkt!");
+// -------------------------------------------
+// /speak → STREAMING AUDIO (POST)
+// -------------------------------------------
+app.post("/speak", async (req, res) => {
+  let text = req.body.text || "";
+  console.log("POST TTS ontvangen:", text);
+
+  // HTML verwijderen
+  text = text
+    .replace(/<[^>]*>?/gm, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+
+  try {
+    const response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": API_KEY,
+          "Content-Type": "application/json",
+          "Accept": "audio/mpeg"
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_multilingual_v2",
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.log("ElevenLabs fout bij streaming");
+      return res.status(500).send("TTS fout");
+    }
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    response.body.pipe(res);
+
+  } catch (err) {
+    console.log("Server fout:", err);
+    res.status(500).send("Interne serverfout");
+  }
 });
+
 
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("TTS server (streaming) draait op poort", PORT);
 });
+
 
